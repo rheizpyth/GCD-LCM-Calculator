@@ -301,7 +301,7 @@ st.write("Step-by-step Euclidean algorithm, linear combination, and LCM. Works f
 
 user_input = st.text_input(
     "Numbers (separated by spaces or commas)",
-    placeholder="e.g. 252 198",
+    placeholder="e.g. 67 69",
 )
 
 if st.button("Calculate"):
