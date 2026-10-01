@@ -122,7 +122,7 @@ def build_solution(numbers: list) -> str:
         div_lines, steps, final_gcd = division_lines(big, small)
         lines += div_lines
         lines.append("")
-        lines.append(f"Therefore, GCD({numbers[0]}, {numbers[1]}) = {final_gcd}")
+        lines.append(f"GCD({numbers[0]}, {numbers[1]}) = {final_gcd}")
     else:
         running = nums[0]
         for idx in range(1, count):
