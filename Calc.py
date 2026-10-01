@@ -164,7 +164,7 @@ def build_solution(numbers: list) -> str:
             final_lcm = new_lcm
 
     lines.append("")
-    lines.append(f"The overall LCM is: {final_lcm}")
+    lines.append(f"The Total LCM is: {final_lcm}")
 
     return "\n".join(lines)
 
