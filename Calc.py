@@ -2,7 +2,7 @@ import streamlit as st
 
 
 # =====================================================================
-# MANUAL HELPERS (no math library)
+# GCD LCM Calculator
 # =====================================================================
 def gcd_manual(a: int, b: int) -> int:
     """Plain Euclidean loop, used for quiet calculations."""
@@ -114,7 +114,7 @@ def build_solution(numbers: list) -> str:
     lines = []
 
     # ---------------- GCD ----------------
-    lines.append(f"GCD{numbers[0]}, {numbers[1]})
+    lines.append(f"GCD({', '.join(map(str, numbers))})")
     lines.append("")
     lines.append("GCD Solution:")
     lines.append("")
