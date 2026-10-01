@@ -12,6 +12,17 @@ def gcd_manual(a: int, b: int) -> int:
     return a
 
 
+def ext_gcd(a: int, b: int) -> tuple:
+    """Returns (g, u, v) with g = a(u) + b(v), for non-negative a and b."""
+    x0, y0, x1, y1 = 1, 0, 0, 1
+    while b != 0:
+        q = a // b
+        a, b = b, a - q * b
+        x0, x1 = x1, x0 - q * x1
+        y0, y1 = y1, y0 - q * y1
+    return a, x0, y0
+
+
 def euclid_steps(big: int, small: int) -> list:
     """Returns the division steps as (dividend, divisor, quotient, remainder)."""
     steps = []
@@ -43,6 +54,23 @@ def fmt_expr(terms: list) -> str:
         else:
             out += (" - " if coef < 0 else " + ") + body
     return out if out else "0"
+
+
+def paren(n: int) -> str:
+    """Wraps negative numbers in parentheses so signs never collide."""
+    return f"({n})" if n < 0 else str(n)
+
+
+def full_sum(values: list, coefs: list) -> str:
+    """Shows every term, even zero coefficients: 4312(22) + 2205(-43)"""
+    return " + ".join(f"{paren(v)}({c})" for v, c in zip(values, coefs))
+
+
+def var_names(count: int) -> list:
+    """x, y for two numbers. x1, x2, x3, ... for more."""
+    if count == 2:
+        return ["x", "y"]
+    return [f"x{i + 1}" for i in range(count)]
 
 
 # =====================================================================
@@ -107,23 +135,70 @@ def back_substitution_lines(big: int, small: int) -> tuple:
     return lines, x, y
 
 
+def multi_combination(values: list, final_gcd: int) -> tuple:
+    """
+    Linear combination for 3 or more numbers, built pair by pair.
+    Works on absolute values, then flips signs for negative inputs.
+    Returns (lines, coefs) where coefs match `values` in the typed order.
+    """
+    absvals = [abs(v) for v in values]
+    lines = []
+
+    running = absvals[0]
+    coefs = [1]  # running = absvals[0](1)
+
+    for i in range(1, len(absvals)):
+        m = absvals[i]
+        g_new, u, v = ext_gcd(running, m)  # g_new = running(u) + m(v)
+        prev_expr = full_sum(absvals[:i], coefs)
+
+        lines.append(f"Step {i}: GCD({running}, {m}) = {g_new}")
+        lines.append(f"{g_new} = {running}({u}) + {m}({v})")
+        if i == 1:
+            coefs = [u, v]
+            running = g_new
+            continue
+        if i > 1:
+            lines.append(f"where {running} = {prev_expr}")
+            sub = fmt_expr([(u, " + ".join(f"{a}({c})" for a, c in zip(absvals[:i], coefs)), True),
+                            (v, str(m), False)])
+            lines.append(f"{g_new} = {sub}")
+
+        coefs = [c * u for c in coefs] + [v]
+        lines.append(f"{g_new} = {full_sum(absvals[:i + 1], coefs)}")
+        lines.append("")
+        running = g_new
+
+    if lines and lines[-1] == "":
+        lines.pop()
+
+    # flip signs for negative inputs so the result works with the typed numbers
+    signs = [1 if v > 0 else -1 for v in values]
+    final_coefs = [c * s for c, s in zip(coefs, signs)]
+    return lines, final_coefs
+
+
 def build_solution(numbers: list) -> dict:
     """
     Returns a dict with:
       gcd_steps, gcd_answer,
-      lin_steps, lin_answer   (None when there are more than 2 numbers),
+      lin_steps, lin_answer,
+      xy_steps, xy_answer,
       lcm_steps, lcm_answer
     """
     nums = [abs(n) for n in numbers]  # work with absolute values
     ordered = sorted(nums, reverse=True)  # highest number first
     count = len(nums)
     joined = ", ".join(map(str, numbers))
+    has_negative = any(n < 0 for n in numbers)
 
     result = {
         "gcd_steps": "",
         "gcd_answer": "",
         "lin_steps": None,
         "lin_answer": None,
+        "xy_steps": None,
+        "xy_answer": None,
         "lcm_steps": "",
         "lcm_answer": "",
     }
@@ -152,11 +227,42 @@ def build_solution(numbers: list) -> dict:
     result["gcd_steps"] = "\n".join(lines)
     result["gcd_answer"] = f"GCD({joined}) = {final_gcd}"
 
-    # ---------------- Linear combination (2 numbers only) ----------------
+    # ---------------- Linear combination ----------------
     if count == 2:
-        bs_lines, x, y = back_substitution_lines(big, small)
-        result["lin_steps"] = "\n".join(bs_lines)
-        result["lin_answer"] = f"{final_gcd} = {big}({x}) + {small}({y})"
+        bs_lines, bx, by = back_substitution_lines(big, small)  # g = big(bx) + small(by)
+
+        # map back to the order the user typed (ties: first typed number is "big")
+        if nums[0] >= nums[1]:
+            c_abs = [bx, by]
+        else:
+            c_abs = [by, bx]
+        coefs = [c_abs[0] * (1 if numbers[0] > 0 else -1),
+                 c_abs[1] * (1 if numbers[1] > 0 else -1)]
+        lin_lines = list(bs_lines)
+    else:
+        lin_lines, coefs = multi_combination(numbers, final_gcd)
+
+    # sign note for negative inputs
+    if has_negative:
+        lin_lines += ["", "Negative input: the steps above use absolute values.",
+                      "Flip the sign of the coefficient for each negative number."]
+
+    result["lin_steps"] = "\n".join(lin_lines)
+    result["lin_answer"] = f"{final_gcd} = {full_sum(numbers, coefs)}"
+
+    # ---------------- Finding x, y (z, ...) ----------------
+    names = var_names(count)
+    label = " + ".join(f"{paren(v)}{n}" for v, n in zip(numbers, names))
+    products = [v * c for v, c in zip(numbers, coefs)]
+    check_terms = " + ".join(f"{paren(v)}({c})" for v, c in zip(numbers, coefs))
+    check_sum = " + ".join(paren(p) for p in products)
+
+    xy_lines = [f"{final_gcd} = {label}", ""]
+    for n, c in zip(names, coefs):
+        xy_lines.append(f"{n} = {c}")
+    xy_lines += ["", "Check:", f"{check_terms} = {check_sum} = {sum(products)}"]
+    result["xy_steps"] = "\n".join(xy_lines)
+    result["xy_answer"] = ",  ".join(f"{n} = {c}" for n, c in zip(names, coefs))
 
     # ---------------- LCM ----------------
     lines = []
@@ -191,7 +297,7 @@ def parse_numbers(text: str) -> list:
 
 
 st.title("GCD and LCM Calculator")
-st.write("Step-by-step Euclidean algorithm, back-substitution, and LCM. Works for two or more numbers.")
+st.write("Step-by-step Euclidean algorithm, linear combination, and LCM. Works for two or more numbers.")
 
 user_input = st.text_input(
     "Numbers (separated by spaces or commas)",
@@ -218,8 +324,8 @@ if st.button("Calculate"):
     # ---------- FINAL ANSWERS (this is what you copy) ----------
     st.subheader("Final Answers")
     st.success(sol["gcd_answer"])
-    if sol["lin_answer"]:
-        st.success(f"Linear combination: {sol['lin_answer']}")
+    st.success(f"Linear combination: {sol['lin_answer']}")
+    st.success(f"Coefficients: {sol['xy_answer']}")
     st.success(sol["lcm_answer"])
 
     st.divider()
@@ -229,11 +335,15 @@ if st.button("Calculate"):
     st.code(sol["gcd_steps"], language="text")
     st.info(sol["gcd_answer"])
 
-    if sol["lin_steps"]:
-        st.divider()
-        st.subheader("Linear Combination Solution")
-        st.code(sol["lin_steps"], language="text")
-        st.info(f"Therefore: {sol['lin_answer']}")
+    st.divider()
+    st.subheader("Linear Combination Solution")
+    st.code(sol["lin_steps"], language="text")
+    st.info(f"Therefore: {sol['lin_answer']}")
+
+    st.divider()
+    st.subheader("Finding the Coefficients")
+    st.code(sol["xy_steps"], language="text")
+    st.info(sol["xy_answer"])
 
     st.divider()
     st.subheader("LCM Solution")
