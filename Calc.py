@@ -135,7 +135,7 @@ def build_solution(numbers: list) -> str:
             lines.append("")
             running = g
         final_gcd = running
-        lines.append(f"Therefore, GCD({', '.join(map(str, numbers))}) = {final_gcd}")
+        lines.append(f"GCD({', '.join(map(str, numbers))}) = {final_gcd}")
 
     lines.append("")
 
