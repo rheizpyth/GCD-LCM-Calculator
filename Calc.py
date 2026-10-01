@@ -110,3 +110,114 @@ def back_substitution_lines(big: int, small: int) -> tuple:
 
 def build_solution(numbers: list) -> str:
     nums = [abs(n) for n in numbers]  # work with absolute values
+    ordered = sorted(nums, reverse=True)  # highest number first
+    count = len(nums)
+    lines = []
+
+    # ---------------- GCD ----------------
+    lines.append(f"GCD({', '.join(map(str, numbers))})")
+    lines.append("")
+    lines.append("GCD Solution:")
+    lines.append("")
+
+    if count == 2:
+        big, small = max(nums), min(nums)
+        div_lines, steps, final_gcd = division_lines(big, small)
+        lines += div_lines
+        lines.append("")
+        lines.append(f"GCD({numbers[0]}, {numbers[1]}) = {final_gcd}")
+    else:
+        running = ordered[0]
+        for idx in range(1, count):
+            nxt = ordered[idx]
+            big, small = max(running, nxt), min(running, nxt)
+            lines.append(f"--- Step {idx}: Finding GCD({big}, {small}) ---")
+            div_lines, steps, g = division_lines(big, small)
+            lines += div_lines
+            lines.append(f"Sub-GCD: GCD({big}, {small}) = {g}")
+            lines.append("")
+            running = g
+        final_gcd = running
+        lines.append(f"GCD({', '.join(map(str, numbers))}) = {final_gcd}")
+
+    lines.append("")
+
+    # ---------------- Linear combination (2 numbers only) ----------------
+    if count == 2:
+        big, small = max(nums), min(nums)
+        lines.append("Linear Combination Solution:")
+        lines.append("")
+        bs_lines, x, y = back_substitution_lines(big, small)
+        lines += bs_lines
+        lines.append("")
+        lines.append("Therefore:")
+        lines.append(f"{final_gcd} = {big}({x}) + {small}({y})")
+        lines.append("")
+
+    # ---------------- LCM ----------------
+    lines.append("LCM Solution:")
+    lines.append("")
+
+    if count == 2:
+        final_lcm = (nums[0] * nums[1]) // final_gcd
+        lines.append(f"LCM({numbers[0]}, {numbers[1]}) = ({nums[0]} * {nums[1]}) / {final_gcd} = {final_lcm}")
+    else:
+        final_lcm = ordered[0]
+        for idx in range(1, count):
+            nxt = ordered[idx]
+            g = gcd_manual(final_lcm, nxt)
+            new_lcm = (final_lcm * nxt) // g
+            lines.append(f"Step {idx}: LCM({final_lcm}, {nxt}) = ({final_lcm} * {nxt}) / {g} = {new_lcm}")
+            final_lcm = new_lcm
+
+    lines.append("")
+    lines.append(f"The overall LCM is: {final_lcm}")
+
+    # ---------------- Self-check (manual, no math library) ----------------
+    gcd_ok = all(n % final_gcd == 0 for n in nums)
+    lcm_ok = all(final_lcm % n == 0 for n in nums)
+    if not (gcd_ok and lcm_ok):
+        raise ValueError("Self-check failed: result does not divide/contain every number.")
+
+    return "\n".join(lines)
+
+
+# =====================================================================
+# STREAMLIT UI (basic)
+# =====================================================================
+def parse_numbers(text: str) -> list:
+    # Accept spaces and/or commas as separators
+    return [int(piece) for piece in text.replace(",", " ").split()]
+
+
+st.title("GCD and LCM Calculator")
+st.write("Step-by-step Euclidean algorithm, back-substitution, and LCM. Works for two or more numbers.")
+
+user_input = st.text_input(
+    "Numbers (separated by spaces or commas)",
+    placeholder="e.g. 252 198",
+)
+
+if st.button("Calculate"):
+    try:
+        values = parse_numbers(user_input)
+    except ValueError:
+        st.error("Invalid input. Enter whole numbers separated by spaces or commas.")
+        st.stop()
+
+    if len(values) < 2:
+        st.error("Enter at least two numbers.")
+        st.stop()
+
+    if any(v == 0 for v in values):
+        st.error("Please enter non-zero integers only.")
+        st.stop()
+
+    try:
+        result = build_solution(values)
+    except Exception as e:
+        st.error(f"Something went wrong: {e}")
+        st.stop()
+
+    st.subheader("Result")
+    st.code(result, language="text")
