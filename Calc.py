@@ -66,11 +66,13 @@ def full_sum(values: list, coefs: list) -> str:
     return " + ".join(f"{paren(v)}({c})" for v, c in zip(values, coefs))
 
 
+SUBSCRIPT = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
 def var_names(count: int) -> list:
-    """x, y for two numbers. x1, x2, x3, ... for more."""
+    """x, y for two numbers. x₁, x₂, x₃, ... for more."""
     if count == 2:
         return ["x", "y"]
-    return [f"x{i + 1}" for i in range(count)]
+    return [f"x{str(i + 1).translate(SUBSCRIPT)}" for i in range(count)]
 
 
 # =====================================================================
