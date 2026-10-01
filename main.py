@@ -15,7 +15,7 @@ st.title("Number Theory Calculator")
 tab_gcd, tab_div = st.tabs(["GCD and LCM", "Divisibility and Division"])
 
 # =====================================================================
-# TAB 1: GCD / LCM (unchanged)
+# TAB 1: GCD / LCM
 # =====================================================================
 with tab_gcd:
     st.write("Step-by-step Euclidean algorithm, linear combination, and LCM. Works for two or more numbers.")
