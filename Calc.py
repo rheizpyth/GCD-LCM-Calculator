@@ -114,7 +114,7 @@ def build_solution(numbers: list) -> str:
     lines = []
 
     # ---------------- GCD ----------------
-    lines.append(f"GCD({numbers[0]}, {numbers[1]}))
+    lines.append(f"GCD{numbers[0]}, {numbers[1]})
     lines.append("")
     lines.append("GCD Solution:")
     lines.append("")
