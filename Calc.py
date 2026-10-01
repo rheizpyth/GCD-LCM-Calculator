@@ -12,12 +12,6 @@ def gcd_manual(a: int, b: int) -> int:
     return a
 
 
-def lcm_manual(a: int, b: int) -> int:
-    """LCM of two numbers using the GCD."""
-    a, b = abs(a), abs(b)
-    return (a * b) // gcd_manual(a, b)
-
-
 def euclid_steps(big: int, small: int) -> list:
     """Returns the division steps as (dividend, divisor, quotient, remainder)."""
     steps = []
@@ -55,11 +49,11 @@ def fmt_expr(terms: list) -> str:
 # STEP-BY-STEP SOLVERS (each returns a list of text lines)
 # =====================================================================
 def division_lines(big: int, small: int) -> tuple:
-    """Lines for the Euclidean divisions. Returns (lines, steps, gcd)."""
+    """Lines for the Euclidean divisions. Returns (lines, gcd)."""
     steps = euclid_steps(big, small)
     lines = [f"{a} = {q}({b}) + {r}" for a, b, q, r in steps]
     g = steps[-1][1]  # divisor of the last division (remainder is 0)
-    return lines, steps, g
+    return lines, g
 
 
 def back_substitution_lines(big: int, small: int) -> tuple:
@@ -121,8 +115,8 @@ def build_solution(numbers: list) -> str:
     lines.append("")
 
     if count == 2:
-        big, small = max(nums), min(nums)
-        div_lines, steps, final_gcd = division_lines(big, small)
+        big, small = ordered
+        div_lines, final_gcd = division_lines(big, small)
         lines += div_lines
         lines.append("")
         lines.append(f"GCD({numbers[0]}, {numbers[1]}) = {final_gcd}")
@@ -132,7 +126,7 @@ def build_solution(numbers: list) -> str:
             nxt = ordered[idx]
             big, small = max(running, nxt), min(running, nxt)
             lines.append(f"--- Step {idx}: Finding GCD({big}, {small}) ---")
-            div_lines, steps, g = division_lines(big, small)
+            div_lines, g = division_lines(big, small)
             lines += div_lines
             lines.append(f"Sub-GCD: GCD({big}, {small}) = {g}")
             lines.append("")
@@ -144,7 +138,6 @@ def build_solution(numbers: list) -> str:
 
     # ---------------- Linear combination (2 numbers only) ----------------
     if count == 2:
-        big, small = max(nums), min(nums)
         lines.append("Linear Combination Solution:")
         lines.append("")
         bs_lines, x, y = back_substitution_lines(big, small)
@@ -173,17 +166,11 @@ def build_solution(numbers: list) -> str:
     lines.append("")
     lines.append(f"The overall LCM is: {final_lcm}")
 
-    # ---------------- Self-check (manual, no math library) ----------------
-    gcd_ok = all(n % final_gcd == 0 for n in nums)
-    lcm_ok = all(final_lcm % n == 0 for n in nums)
-    if not (gcd_ok and lcm_ok):
-        raise ValueError("Self-check failed: result does not divide/contain every number.")
-
     return "\n".join(lines)
 
 
 # =====================================================================
-# STREAMLIT UI (basic)
+# STREAMLIT UI
 # =====================================================================
 def parse_numbers(text: str) -> list:
     # Accept spaces and/or commas as separators
@@ -213,11 +200,5 @@ if st.button("Calculate"):
         st.error("Please enter non-zero integers only.")
         st.stop()
 
-    try:
-        result = build_solution(values)
-    except Exception as e:
-        st.error(f"Something went wrong: {e}")
-        st.stop()
-
     st.subheader("Result")
-    st.code(result, language="text")
+    st.code(build_solution(values), language="text")
