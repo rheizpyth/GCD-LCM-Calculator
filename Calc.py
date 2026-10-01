@@ -77,6 +77,7 @@ def back_substitution_lines(big: int, small: int) -> tuple:
     i = k - 2
     x, y = 1, -quots[i]  # g = x(vals[i]) + y(vals[i+1])
     lines.append(f"{g} = {fmt_expr([(x, str(vals[i]), False), (y, str(vals[i + 1]), False)])}")
+    lines.append("")
 
     while i > 0:
         q = quots[i - 1]
@@ -97,63 +98,72 @@ def back_substitution_lines(big: int, small: int) -> tuple:
         x, y = y, x - y * q
         lines.append(f"{g} = {fmt_expr([(x, str(left), False), (y, str(mid), False)])}")
 
+        # blank line between each round so the rounds are easy to tell apart
+        if i > 1:
+            lines.append("")
+
         i -= 1
 
     return lines, x, y
 
 
-def build_solution(numbers: list) -> str:
+def build_solution(numbers: list) -> dict:
+    """
+    Returns a dict with:
+      gcd_steps, gcd_answer,
+      lin_steps, lin_answer   (None when there are more than 2 numbers),
+      lcm_steps, lcm_answer
+    """
     nums = [abs(n) for n in numbers]  # work with absolute values
     ordered = sorted(nums, reverse=True)  # highest number first
     count = len(nums)
-    lines = []
+    joined = ", ".join(map(str, numbers))
+
+    result = {
+        "gcd_steps": "",
+        "gcd_answer": "",
+        "lin_steps": None,
+        "lin_answer": None,
+        "lcm_steps": "",
+        "lcm_answer": "",
+    }
 
     # ---------------- GCD ----------------
-    lines.append(f"GCD({', '.join(map(str, numbers))})")
-    lines.append("")
-    lines.append("GCD Solution:")
-    lines.append("")
-
+    lines = []
     if count == 2:
         big, small = ordered
         div_lines, final_gcd = division_lines(big, small)
         lines += div_lines
-        lines.append("")
-        lines.append(f"GCD({numbers[0]}, {numbers[1]}) = {final_gcd}")
     else:
         running = ordered[0]
         for idx in range(1, count):
             nxt = ordered[idx]
-            big, small = max(running, nxt), min(running, nxt)
-            lines.append(f"--- Step {idx}: Finding GCD({big}, {small}) ---")
-            div_lines, g = division_lines(big, small)
+            b, s = max(running, nxt), min(running, nxt)
+            lines.append(f"Step {idx}: GCD({b}, {s})")
+            div_lines, g = division_lines(b, s)
             lines += div_lines
-            lines.append(f"Sub-GCD: GCD({big}, {small}) = {g}")
+            lines.append(f"→ GCD({b}, {s}) = {g}")
             lines.append("")
             running = g
         final_gcd = running
-        lines.append(f"GCD({', '.join(map(str, numbers))}) = {final_gcd}")
+        if lines and lines[-1] == "":
+            lines.pop()
 
-    lines.append("")
+    result["gcd_steps"] = "\n".join(lines)
+    result["gcd_answer"] = f"GCD({joined}) = {final_gcd}"
 
     # ---------------- Linear combination (2 numbers only) ----------------
     if count == 2:
-        lines.append("Linear Combination Solution:")
-        lines.append("")
         bs_lines, x, y = back_substitution_lines(big, small)
-        lines += bs_lines
-        lines.append("")
-        lines.append("Therefore:")
-        lines.append(f"{final_gcd} = {big}({x}) + {small}({y})")
-        lines.append("")
+        result["lin_steps"] = "\n".join(bs_lines)
+        result["lin_answer"] = f"{final_gcd} = {big}({x}) + {small}({y})"
 
     # ---------------- LCM ----------------
-    lines.append("LCM Solution:")
-    lines.append("")
-
+    lines = []
     if count == 2:
         final_lcm = (nums[0] * nums[1]) // final_gcd
-        lines.append(f"LCM({numbers[0]}, {numbers[1]}) = ({nums[0]} * {nums[1]}) / {final_gcd} = {final_lcm}")
+        lines.append(f"LCM = ({nums[0]} * {nums[1]}) / {final_gcd}")
+        lines.append(f"LCM = {final_lcm}")
     else:
         final_lcm = ordered[0]
         for idx in range(1, count):
@@ -161,12 +171,15 @@ def build_solution(numbers: list) -> str:
             g = gcd_manual(final_lcm, nxt)
             new_lcm = (final_lcm * nxt) // g
             lines.append(f"Step {idx}: LCM({final_lcm}, {nxt}) = ({final_lcm} * {nxt}) / {g} = {new_lcm}")
+            lines.append("")
             final_lcm = new_lcm
+        if lines and lines[-1] == "":
+            lines.pop()
 
-    lines.append("")
-    lines.append(f"The Total LCM is: {final_lcm}")
+    result["lcm_steps"] = "\n".join(lines)
+    result["lcm_answer"] = f"LCM({joined}) = {final_lcm}"
 
-    return "\n".join(lines)
+    return result
 
 
 # =====================================================================
@@ -200,5 +213,29 @@ if st.button("Calculate"):
         st.error("Please enter non-zero integers only.")
         st.stop()
 
-    st.subheader("Result")
-    st.code(build_solution(values), language="text")
+    sol = build_solution(values)
+
+    # ---------- FINAL ANSWERS (this is what you copy) ----------
+    st.subheader("Final Answers")
+    st.success(sol["gcd_answer"])
+    if sol["lin_answer"]:
+        st.success(f"Linear combination: {sol['lin_answer']}")
+    st.success(sol["lcm_answer"])
+
+    st.divider()
+
+    # ---------- SOLUTIONS ----------
+    st.subheader("GCD Solution")
+    st.code(sol["gcd_steps"], language="text")
+    st.info(sol["gcd_answer"])
+
+    if sol["lin_steps"]:
+        st.divider()
+        st.subheader("Linear Combination Solution")
+        st.code(sol["lin_steps"], language="text")
+        st.info(f"Therefore: {sol['lin_answer']}")
+
+    st.divider()
+    st.subheader("LCM Solution")
+    st.code(sol["lcm_steps"], language="text")
+    st.info(sol["lcm_answer"])
